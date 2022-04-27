@@ -44,6 +44,8 @@ namespace CreateImage
             //-----------------------------------------------------------------
             // Establish the Azure connection.
 
+            Console.WriteLine($"AZURE connect");
+
             var azureCredentials =
                 new AzureCredentials(
                     new ServicePrincipalLoginInformation()
@@ -63,8 +65,12 @@ namespace CreateImage
 
             if (azure.ResourceGroups.List().Any(resourceGroupItem => resourceGroupItem.Name == resourceGroupName && resourceGroupItem.RegionName == region))
             {
+                Console.WriteLine($"Remove existing resource group: {resourceGroupName}");
+
                 await azure.ResourceGroups.DeleteByNameAsync(resourceGroupName);
             }
+
+            Console.WriteLine($"Create resource group: {resourceGroupName}");
 
             await azure.ResourceGroups
                 .Define(resourceGroupName)
@@ -73,6 +79,8 @@ namespace CreateImage
 
             //-----------------------------------------------------------------
             // Prepare network settings for the VM.
+
+            Console.WriteLine($"Prepare network");
 
             var publicAddress = await azure.PublicIPAddresses
                 .Define("public-address")
@@ -119,6 +127,8 @@ namespace CreateImage
             //-----------------------------------------------------------------
             // Start the VM and wait until it's ready.
 
+            Console.WriteLine($"Create VM");
+
             var vm = azure.VirtualMachines
                 .Define("vm")
                 .WithRegion(region)
@@ -127,13 +137,14 @@ namespace CreateImage
                 .WithSpecificLinuxImageVersion(imageRef)
                 .WithRootUsername(vmUserName)
                 .WithRootPassword(vmPassword)
+                .WithUnmanagedDisks()
                 .WithComputerName("ubuntu")
-                .WithOSDiskStorageAccountType(StorageAccountTypes.StandardSSDLRS)
-                //.WithAvailabilityZone(AvailabilityZoneId.Zone_3)
                 .WithSize(vmSize)
                 .WithOSDiskSizeInGB(32)
                 .WithBootDiagnostics()
                 .Create();
+
+            Console.WriteLine($"Wait for VM");
 
             while (true)
             {
@@ -150,11 +161,15 @@ namespace CreateImage
             //-----------------------------------------------------------------
             // Power down the VM and generalize it.
 
+            Console.WriteLine($"Generalize VM");
+
             await azure.VirtualMachines.PowerOffAsync(vm.ResourceGroupName, vm.Name);
             await azure.VirtualMachines.GeneralizeAsync(vm.ResourceGroupName, vm.Name);
 
             //-----------------------------------------------------------------
             // Create the image gallery if it doesn't already exist.
+
+            Console.WriteLine($"Create image gallery: {galleryName}");
 
             var gallery = (await azure.Galleries.ListAsync()).SingleOrDefault(gallery => gallery.Name == galleryName);
 
@@ -170,6 +185,8 @@ namespace CreateImage
 
             //-----------------------------------------------------------------
             // Create the gallery image if it doesn't already exist.
+
+            Console.WriteLine($"Create gallery image: {imageName}");
 
             var image = (await azure.GalleryImages.ListByGalleryAsync(gallery.ResourceGroupName, gallery.Name)).SingleOrDefault(image => image.Name == imageName);
 
@@ -192,11 +209,15 @@ namespace CreateImage
 
             if (imageVersion != null)
             {
+                Console.WriteLine($"Remove existing gallery image version: {imageName}");
+
                 await azure.GalleryImageVersions.DeleteByGalleryImageAsync(gallery.ResourceGroupName, gallery.Name, image.Name, imageVersion.Name);
             }
 
             //-----------------------------------------------------------------
             // Create a custom image from the VM.
+
+            Console.WriteLine($"Create custom image: my-image");
 
             var customImage = await azure.VirtualMachineCustomImages
                 .Define("my-image")
@@ -208,6 +229,8 @@ namespace CreateImage
 
             //-----------------------------------------------------------------
             // Publish the image version to the gallery.
+
+            Console.WriteLine($"Publish image to gallery as: 1.0.0");
 
             await azure.GalleryImageVersions
                 .Define("1.0.0")

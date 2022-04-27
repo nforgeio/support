@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "CreateImage": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "AZURE_CLIENTID": "8bd8639a-b8da-4f78-a9d5-9b8a591bd257",
+        "AZURE_CLIENTSECRET": "doQh03r_zj7HrzNEx7QsEqEN_G3lGgi0ZA",
+        "AZURE_SUBSCRIPTIONID": "f11f67a7-d42b-4d7e-8df1-7017823f1780",
+        "AZURE_TENANTID": "f897d047-0bc2-479c-99c3-fa18fddab891"
+      }
+    }
+  }
+}

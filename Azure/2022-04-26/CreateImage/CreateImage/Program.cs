@@ -251,7 +251,7 @@ namespace CreateImage
             // gallery image version failed because the image version thinks it's
             // gen1.
             //
-            // So there must be a way to specify that the gallery image should be gen2, 
+            // So there must be a way to specify at line #206 that the gallery image should be gen2, 
             // and I can see that as an option in the Azure portal, but I but I can't figure
             // out how to set this using the API.
         }

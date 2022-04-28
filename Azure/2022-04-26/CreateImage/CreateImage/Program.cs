@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 
+using Microsoft.Azure.Management.AppService.Fluent.Models;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.Compute.Fluent.Models;
 using Microsoft.Azure.Management.Fluent;
@@ -19,27 +20,20 @@ namespace CreateImage
         {
             // NOTE:
             // -----
-            // Configure your Azure credentials as environment variables in your debug
-            // launch profile.
+            // Configure your Azure credentials as environment variables in
+            // your debug launch profile.
 
             var subscriptionId    = Environment.GetEnvironmentVariable("AZURE_SUBSCRIPTIONID");
             var tenantId          = Environment.GetEnvironmentVariable("AZURE_TENANTID");
             var clientId          = Environment.GetEnvironmentVariable("AZURE_CLIENTID");
             var clientSecret      = Environment.GetEnvironmentVariable("AZURE_CLIENTSECRET");
             var vmUserName        = "ubuntu";
-            var vmSize            = "Standard_D4ads_v5";
+            var vmSize            = "Standard_D4as_v4";
             var vmPassword        = "crappy.password.Aa0";
-            var region            = "westus";
-            var resourceGroupName = "create-image-rg";
-            var galleryName       = "test-gallery";
+            var region            = "northeurope";
+            var resourceGroupName = "create-image";
+            var galleryName       = "test.gallery";
             var imageName         = "test";
-            var imageRef          = new ImageReference()
-            {
-                Publisher = "Canonical",
-                Offer     = "0001-com-ubuntu-server-focal",
-                Sku       = "20_04-lts-gen2",
-                Version   = "20.04.202204190"
-            };
 
             //-----------------------------------------------------------------
             // Establish the Azure connection.
@@ -61,7 +55,7 @@ namespace CreateImage
                 .WithSubscription(subscriptionId);
 
             //-----------------------------------------------------------------
-            // Remove any existing resource group and then create a fresh group.
+            // Remove any existing resource group and then create a new one.
 
             if (azure.ResourceGroups.List().Any(resourceGroupItem => resourceGroupItem.Name == resourceGroupName && resourceGroupItem.RegionName == region))
             {
@@ -78,7 +72,7 @@ namespace CreateImage
                 .CreateAsync();
 
             //-----------------------------------------------------------------
-            // Prepare network settings for the VM.
+            // Prepare the network for the VM.
 
             Console.WriteLine($"Prepare network");
 
@@ -134,10 +128,9 @@ namespace CreateImage
                 .WithRegion(region)
                 .WithExistingResourceGroup(resourceGroupName)
                 .WithExistingPrimaryNetworkInterface(nic)
-                .WithSpecificLinuxImageVersion(imageRef)
+                .WithLatestLinuxImage(publisher: "Canonical", offer: "0001-com-ubuntu-server-focal", sku: "20_04-lts-gen2" )    // <-- SHOULD BE A GEN2 IMAGE, RIGHT???
                 .WithRootUsername(vmUserName)
                 .WithRootPassword(vmPassword)
-                .WithUnmanagedDisks()
                 .WithComputerName("ubuntu")
                 .WithSize(vmSize)
                 .WithOSDiskSizeInGB(32)
@@ -150,7 +143,7 @@ namespace CreateImage
             {
                 var vmStatus = await azure.VirtualMachines.GetByIdAsync(vm.Id);
 
-                if (vmStatus.ProvisioningState == "")
+                if (vmStatus.ProvisioningState == "Succeeded")
                 {
                     break;
                 }
@@ -158,12 +151,15 @@ namespace CreateImage
                 await Task.Delay(TimeSpan.FromSeconds(5));
             }
 
+            // NOTE: I've confirmed on the portal that the VM is gen2.
+
             //-----------------------------------------------------------------
             // Power down the VM and generalize it.
 
-            Console.WriteLine($"Generalize VM");
-
+            Console.WriteLine($"Power down VM");
             await azure.VirtualMachines.PowerOffAsync(vm.ResourceGroupName, vm.Name);
+
+            Console.WriteLine($"Generalize VM");
             await azure.VirtualMachines.GeneralizeAsync(vm.ResourceGroupName, vm.Name);
 
             //-----------------------------------------------------------------
@@ -184,6 +180,21 @@ namespace CreateImage
             }
 
             //-----------------------------------------------------------------
+            // Create a custom image from the VM.
+
+            Console.WriteLine($"Create custom image: my-image");
+
+            var customImage = await azure.VirtualMachineCustomImages
+                .Define("my-image")
+                .WithRegion(region)
+                .WithExistingResourceGroup(gallery.ResourceGroupName)
+                .WithHyperVGeneration(HyperVGenerationTypes.V2)                                                 // <-- Shouldn't this create a gen2 image???
+                .WithLinuxFromDisk(vm.OSDiskId, OperatingSystemStateTypes.Generalized)
+                .CreateAsync();
+
+            // NOTE: I've verified that this was created as a gen2 image.
+
+            //-----------------------------------------------------------------
             // Create the gallery image if it doesn't already exist.
 
             Console.WriteLine($"Create gallery image: {imageName}");
@@ -196,7 +207,7 @@ namespace CreateImage
                     .Define(imageName)
                     .WithExistingGallery(gallery)
                     .WithLocation(region)
-                    .WithIdentifier("test-publisher", "test-offer", "test-sku")
+                    .WithIdentifier(publisher: "test-publisher", offer: "test-offer", sku: "test-sku-gen2")     // <-- NOTE: the SKU ends with "-gen2" if that matters
                     .WithGeneralizedLinux()
                     .WithDescription("This is a test image.")
                     .CreateAsync();
@@ -215,30 +226,34 @@ namespace CreateImage
             }
 
             //-----------------------------------------------------------------
-            // Create a custom image from the VM.
-
-            Console.WriteLine($"Create custom image: my-image");
-
-            var customImage = await azure.VirtualMachineCustomImages
-                .Define("my-image")
-                .WithRegion(region)
-                .WithExistingResourceGroup(gallery.ResourceGroupName)
-                .WithHyperVGeneration(HyperVGenerationTypes.V2)
-                .WithLinuxFromDisk(vm.OSDiskId, OperatingSystemStateTypes.Generalized)
-                .CreateAsync();
-
-            //-----------------------------------------------------------------
             // Publish the image version to the gallery.
 
             Console.WriteLine($"Publish image to gallery as: 1.0.0");
 
             await azure.GalleryImageVersions
                 .Define("1.0.0")
-                .WithExistingImage(gallery.ResourceGroupName, gallery.Name, image.Name)
+                .WithExistingImage(gallery.ResourceGroupName, gallery.Name, imageName)
                 .WithLocation(region)
                 .WithSourceCustomImage(customImage.Id)
                 .WithRegionAvailability(Region.Create(region), replicaCount: 1)
-                .CreateAsync();
+                .CreateAsync();                                                                                 // <-- throws: Microsoft.Rest.Azure.CloudException
+
+            // NOTE: The CreateAsync() method above throws:
+            //
+            // TYPE: Microsoft.Rest.Azure.CloudException
+            //
+            // MESSAGE:
+            // Long running operation failed with status 'Failed'.
+            // Additional Info:'The resource with id '/subscriptions/f11f67a7-d42b-4d7e-8df1-7017823f1780/resourceGroups/create-image/providers/Microsoft.Compute/images/my-image'
+            // has a different Hypervisor generation ['V2'] than the parent gallery image Hypervisor generation ['V1'].'
+
+            // So, somehow using the gen2 custom image created above to create the
+            // gallery image version failed because the image version thinks it's
+            // gen1.
+            //
+            // So there must be a way to specify that the gallery image should be gen2, 
+            // and I can see that as an option in the Azure portal, but I but I can't figure
+            // out how to set this using the API.
         }
     }
 }

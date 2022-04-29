@@ -210,7 +210,6 @@ namespace CreateImage
 
             var image = (await azure.GalleryImages.ListByGalleryAsync(gallery.ResourceGroupName, gallery.Name)).SingleOrDefault(image => image.Name == imageName);
 
-#if DOESNT_WORK
             if (image == null)
             {
                 image = await azure.GalleryImages
@@ -219,29 +218,9 @@ namespace CreateImage
                     .WithLocation(region)
                     .WithIdentifier(publisher: "test-publisher", offer: "test-offer", sku: "test-sku-gen2")     // <-- NOTE: the SKU ends with "-gen2" if that matters
                     .WithGeneralizedLinux()
+                    //.WithHyperVGeneration(HyperVGenerationTypes.V2)                                           // <-- Seems like the API needs something like this???
                     .WithDescription("This is a test image.")
                     .CreateAsync();
-            }
-#endif
-            if (image == null)
-            {
-                NeonHelper.ExecuteCapture("az.cmd",
-                    new object[]
-                    {
-                        "sig", "image-definition", "create",
-                        "--resource-group", resourceGroupName,
-                        "--gallery-name", galleryName,
-                        "--gallery-image-definition", imageName,
-                        "--hyper-v-generation", "V2",
-                        "--publisher", "test-publisher",
-                        "--offer", "test-offer",
-                        "--sku", "test-sku",
-                        "--os-type", "linux",
-                        "--os-state", "generalized"
-                    })
-                    .EnsureSuccess();
-
-                image = (await azure.GalleryImages.ListByGalleryAsync(gallery.ResourceGroupName, gallery.Name)).SingleOrDefault(image => image.Name == imageName);
             }
 
             //-----------------------------------------------------------------

@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 
 using Microsoft.Azure.Management.AppService.Fluent.Models;
+using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.Compute.Fluent.Models;
 using Microsoft.Azure.Management.Fluent;
@@ -11,6 +13,8 @@ using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.Storage.Fluent;
+
+using Neon.Common;
 
 namespace CreateImage
 {
@@ -199,8 +203,14 @@ namespace CreateImage
 
             Console.WriteLine($"Create gallery image: {imageName}");
 
+            // $hack(jefflill): 
+            //
+            // There doesn't appear to be a way to create a GEN2 gallery image using
+            // the Azure Fluent SDK, so we're going to use the Azure CLI instead.
+
             var image = (await azure.GalleryImages.ListByGalleryAsync(gallery.ResourceGroupName, gallery.Name)).SingleOrDefault(image => image.Name == imageName);
 
+#if DOESNT_WORK
             if (image == null)
             {
                 image = await azure.GalleryImages
@@ -211,6 +221,27 @@ namespace CreateImage
                     .WithGeneralizedLinux()
                     .WithDescription("This is a test image.")
                     .CreateAsync();
+            }
+#endif
+            if (image == null)
+            {
+                NeonHelper.ExecuteCapture("az.cmd",
+                    new object[]
+                    {
+                        "sig", "image-definition", "create",
+                        "--resource-group", resourceGroupName,
+                        "--gallery-name", galleryName,
+                        "--gallery-image-definition", imageName,
+                        "--hyper-v-generation", "V2",
+                        "--publisher", "test-publisher",
+                        "--offer", "test-offer",
+                        "--sku", "test-sku",
+                        "--os-type", "linux",
+                        "--os-state", "generalized"
+                    })
+                    .EnsureSuccess();
+
+                image = (await azure.GalleryImages.ListByGalleryAsync(gallery.ResourceGroupName, gallery.Name)).SingleOrDefault(image => image.Name == imageName);
             }
 
             //-----------------------------------------------------------------

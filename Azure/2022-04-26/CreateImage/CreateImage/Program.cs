@@ -65,7 +65,7 @@ namespace CreateImage
             {
                 Console.WriteLine($"Remove existing resource group: {resourceGroupName}");
 
-                await azure.ResourceGroups.DeleteByNameAsync(resourceGroupName);
+                await azure.ResourceGroups.DeleteByNameAsync(resourceGroupName, "Microsoft.Compute/virtualMachines");
             }
 
             Console.WriteLine($"Create resource group: {resourceGroupName}");
@@ -212,6 +212,8 @@ namespace CreateImage
 
             if (image == null)
             {
+#if DOESNT_WORK
+
                 image = await azure.GalleryImages
                     .Define(imageName)
                     .WithExistingGallery(gallery)
@@ -221,6 +223,26 @@ namespace CreateImage
                     //.WithHyperVGeneration(HyperVGenerationTypes.V2)                                           // <-- Seems like the API needs something like this???
                     .WithDescription("This is a test image.")
                     .CreateAsync();
+#else
+                NeonHelper.ExecuteCapture("az.cmd",
+                    new object[]
+                    {
+                        "sig", "image-definition", "create",
+                        "--resource-group", gallery.ResourceGroupName,
+                        "--gallery-name", galleryName,
+                        "--gallery-image-definition", "test",
+                        "--hyper-v-generation", "V2",
+                        "--publisher", "publisher",
+                        "--offer", "offer",
+                        "--sku", "gen2",
+                        "--os-type", "linux",
+                        "--os-state", "generalized",
+                        "--description", "Test images."
+                    })
+                    .EnsureSuccess();
+
+                image = (await azure.GalleryImages.ListByGalleryAsync(gallery.ResourceGroupName, gallery.Name)).SingleOrDefault(image => image.Name == "test");
+#endif
             }
 
             //-----------------------------------------------------------------

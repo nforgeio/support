@@ -44,6 +44,7 @@ namespace TestKubeOps
                     break;
 
                 case TestMode.CreateModifyStatus:
+                case TestMode.CreateModifyStatusException:
 
                     if (testObject.Status?.Phase == "Created")
                     {
@@ -74,6 +75,14 @@ namespace TestKubeOps
                 case TestMode.CreateAndDelete:
 
                     break;
+
+                case TestMode.CreateModifyStatus:
+
+                    break;
+
+                case TestMode.CreateModifyStatusException:
+                    
+                    break;
             }
 
             await Task.CompletedTask;
@@ -91,6 +100,14 @@ namespace TestKubeOps
                 case TestMode.CreateAndDelete:
 
                     break;
+
+                case TestMode.CreateModifyStatus:
+
+                    break;
+
+                case TestMode.CreateModifyStatusException:
+
+                    throw new Exception("TEST EXCEPTION");
             }
 
             await Task.CompletedTask;

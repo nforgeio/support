@@ -135,7 +135,12 @@ spec:
 
                 case "createmodifystatus":
 
-                    _  = TestCreateModifyStatusAsync();
+                    _ = TestCreateModifyStatusAsync(throwInStatusModified: false);
+                    break;
+
+                case "createmodifystatusexception":
+
+                    _ = TestCreateModifyStatusAsync(throwInStatusModified: true);
                     break;
 
                 case null:
@@ -152,6 +157,10 @@ spec:
                     Console.WriteLine("    Create a resource once a second and the controller updates status on reconcile:");
                     Console.WriteLine();
                     Console.WriteLine("        TestKubeOps CreateModifyStatus [--requeue]");
+                    Console.WriteLine();
+                    Console.WriteLine("    Create a resource once a second and the controller throws an exception on status-modified:");
+                    Console.WriteLine();
+                    Console.WriteLine("        TestKubeOps CreateModifyStatusException [--requeue]");
                     Console.WriteLine();
                     Environment.Exit(1);
                     break;
@@ -238,16 +247,16 @@ spec:
             }
         }
 
-        private static async Task TestCreateModifyStatusAsync()
+        private static async Task TestCreateModifyStatusAsync(bool throwInStatusModified)
         {
-            TestMode = TestMode.CreateModifyStatus;
+            TestMode = throwInStatusModified ? TestMode.CreateModifyStatusException : TestMode.CreateModifyStatus;
 
             await PauseForStartAsync();
 
             // This test creates a new test object every second.  We're going
             // remove objects older than 10 seconds below in batches.
 
-            var lifeSpan      = TimeSpan.FromSeconds(10);
+            var lifeSpan            = TimeSpan.FromSeconds(10);
             var deleteBatchInterval = TimeSpan.FromSeconds(30);
             var nextDeleteTimeUtc   = DateTime.UtcNow + deleteBatchInterval;
 

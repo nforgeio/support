@@ -9,6 +9,7 @@ namespace TestKubeOps
     public enum TestMode
     {
         CreateAndDelete,
-        CreateModifyStatus
+        CreateModifyStatus,
+        CreateModifyStatusException
     }
 }

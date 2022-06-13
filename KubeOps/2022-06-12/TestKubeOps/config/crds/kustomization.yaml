@@ -1,0 +1,6 @@
+commonLabels:
+  operator-element: crd
+resources:
+- kubeopstests_neonforge_io.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization

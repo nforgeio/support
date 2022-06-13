@@ -1,0 +1,32 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: operator-role
+rules:
+- apiGroups:
+  - neonforge.io
+  resources:
+  - kubeopstests
+  verbs:
+  - get
+  - list
+  - watch
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - get
+  - list
+  - update
+- apiGroups:
+  - neonforge.io
+  resources:
+  - kubeopstests/status
+  verbs:
+  - get
+  - patch
+  - update

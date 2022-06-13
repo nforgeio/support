@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32526.322
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestKubeOps", "TestKubeOps\TestKubeOps.csproj", "{249A20D3-8293-4926-8F5C-8B0883680ADC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{249A20D3-8293-4926-8F5C-8B0883680ADC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{249A20D3-8293-4926-8F5C-8B0883680ADC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{249A20D3-8293-4926-8F5C-8B0883680ADC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{249A20D3-8293-4926-8F5C-8B0883680ADC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1439E525-0A1E-4A25-89B1-291E2E802152}
+	EndGlobalSection
+EndGlobal

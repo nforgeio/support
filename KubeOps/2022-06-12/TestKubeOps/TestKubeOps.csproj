@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net6.0</TargetFramework>
+		<RootNamespace>TestKubeOps</RootNamespace>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>disable</Nullable>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<KubeOpsConfigRoot>config</KubeOpsConfigRoot>
+		<KubeOpsSkipDockerfile>true</KubeOpsSkipDockerfile>
+	</PropertyGroup>
+	
+	<ItemGroup>
+		<PackageReference Include="KubeOps" Version="7.0.0-prerelease.2" />
+		<PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="6.0.5" />
+	</ItemGroup>
+
+</Project>

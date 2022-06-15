@@ -10,6 +10,7 @@ namespace TestKubeOps
     {
         CreateAndDelete,
         CreateModifyStatus,
-        CreateModifyStatusException
+        CreateModifyStatusException,
+        FirstWatchDelay
     }
 }

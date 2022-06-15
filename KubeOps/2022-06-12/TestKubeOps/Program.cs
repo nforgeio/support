@@ -22,6 +22,7 @@ namespace TestKubeOps
     public static class Program
     {
         public static IKubernetes K8s { get; private set; }
+        public static DateTime TestStartTime { get; private set; } = DateTime.UtcNow;
         public static TestMode TestMode { get; private set; }
         public static bool Requeue { get; private set; }
         public static readonly JsonSerializerOptions serializerOptions = 
@@ -143,6 +144,11 @@ spec:
                     _ = TestCreateModifyStatusAsync(throwInStatusModified: true);
                     break;
 
+                case "firstwatchdelay":
+
+                    _ = TestFirstWatchDelayAsync();
+                    break;
+
                 case null:
 
                     Console.WriteLine();
@@ -161,6 +167,10 @@ spec:
                     Console.WriteLine("    Create a resource once a second and the controller throws an exception on status-modified:");
                     Console.WriteLine();
                     Console.WriteLine("        TestKubeOps CreateModifyStatusException [--requeue]");
+                    Console.WriteLine();
+                    Console.WriteLine("    Test the delay between creaeting the first resource and seeing it from a waitch:");
+                    Console.WriteLine();
+                    Console.WriteLine("        TestKubeOps FirstWatchDelay [--requeue]");
                     Console.WriteLine();
                     Environment.Exit(1);
                     break;
@@ -206,7 +216,11 @@ spec:
         {
             // Give KubeOps a chance to spin-up.
 
-            await Task.Delay(TimeSpan.FromSeconds(5));
+            var pauseTDelay = TimeSpan.FromSeconds(30);
+
+            Log($"PAUSE: [{pauseTDelay}] give KubeOps a chance to spin up");
+            await Task.Delay(pauseTDelay);
+            Log("PAUSE: ready");
         }
 
         private static async Task TestCreateAndDeleteAsync()
@@ -308,6 +322,74 @@ spec:
                     LogException(e);
                 }
             }
+        }
+
+        private static void Log(string message)
+        {
+            Console.WriteLine($"[{DateTime.UtcNow - TestStartTime}]: {message}");
+        }
+
+        private static async Task TestFirstWatchDelayAsync()
+        {
+            TestMode = TestMode.FirstWatchDelay;
+
+            // KubeOps doesn't report the first resource for about 2:45 after it's created.
+            // Here's the scenario:
+            //
+            //      1. Delete any existing test objects
+            //      2. Start the operator
+            //      3. Wait a while to ensure that the operator has started watching
+            //      4. Create the first resource and record the time
+            //      5. Wait for the operator to see the the first reconcile
+            //      6. Display the interval between when the resource was created and then seen
+
+            await PauseForStartAsync();
+
+            var createTime = DateTime.UtcNow;
+
+            Log($"CREATE: resource");
+
+            var testObject = new V1KubeOpsTest()
+            {
+                Kind       = V1KubeOpsTest.KubeKind,
+                ApiVersion = $"{V1KubeOpsTest.KubeGroup}/{V1KubeOpsTest.KubeApiVersion}",
+                Metadata   = new V1ObjectMeta()
+                {
+                    Name = Guid.NewGuid().ToString("d")
+                },
+                Spec = new V1KubeOpsTest.TestSpec()
+                {
+                    Message = "Hello World!"
+                }
+            };
+
+            try
+            {
+                // Create the new object.
+
+                await K8s.CreateClusterCustomObjectAsync(testObject, group: V1KubeOpsTest.KubeGroup, version: V1KubeOpsTest.KubeApiVersion, plural: V1KubeOpsTest.KubePlural);
+            }
+            catch (Exception e)
+            {
+                LogException(e);
+                return;
+            }
+
+            while (!Controller.FirstReconcileTime.HasValue)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1));
+            }
+
+            var watchDelay = Controller.FirstReconcileTime.Value - createTime;
+
+            Log($"WATCH-DELAY: {watchDelay}");
+
+            if (watchDelay > TimeSpan.FromSeconds(20))
+            {
+                Log($"EXCESSIVE-DELAY: Expected the delay between creating the resource and seeing it reconciled to be about [WatcherMaxRetrySeconds=15s] or less");
+            }
+
+            Environment.Exit(0);
         }
     }
 }

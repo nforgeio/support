@@ -17,6 +17,7 @@ namespace TestKubeOps
                     settings.Name                   = "TestKubeOps";
                     settings.EnableAssemblyScanning = true;
                     settings.EnableLeaderElection   = false;
+                    settings.WatcherMaxRetrySeconds = 15;
                 });
         }
 

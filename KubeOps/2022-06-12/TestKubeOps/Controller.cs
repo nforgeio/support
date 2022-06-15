@@ -22,6 +22,14 @@ namespace TestKubeOps
     [EntityRbac(typeof(V1KubeOpsTest), Verbs = RbacVerb.Get | RbacVerb.List | RbacVerb.Patch | RbacVerb.Watch | RbacVerb.Update)]
     public class Controller : IResourceController<V1KubeOpsTest>
     {
+        //---------------------------------------------------------------------
+        // Static members
+
+        public static DateTime? FirstReconcileTime { get; private set; } = null;
+
+        //---------------------------------------------------------------------
+        // Instance members
+
         private readonly IKubernetes K8s;
 
         public Controller(IKubernetes k8s)
@@ -57,6 +65,14 @@ namespace TestKubeOps
                     patch.Replace(path => path.Status.Phase, "Created");
 
                     await K8s.PatchClusterCustomObjectStatusAsync(ToV1Patch<V1KubeOpsTest>(patch), group: V1KubeOpsTest.KubeGroup, version: V1KubeOpsTest.KubeApiVersion, plural: V1KubeOpsTest.KubePlural, name: testObject.Name());
+                    break;
+
+                case TestMode.FirstWatchDelay:
+
+                    if (!FirstReconcileTime.HasValue)
+                    {
+                        FirstReconcileTime = DateTime.UtcNow;
+                    }
                     break;
             }
 
